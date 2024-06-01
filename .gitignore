@@ -128,4 +128,4 @@ dist
 .pnp.*
 
 # IDEA
-./.idea
+/.idea
