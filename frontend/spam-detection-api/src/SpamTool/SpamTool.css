@@ -1,3 +1,7 @@
+input::placeholder, textarea::placeholder {
+  padding-left: 10px; /* Adjust this value as needed */
+}
+
 .style-0 {
     cursor: auto;
     font-family: Roboto, -apple-system, 'system-ui', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -70,7 +74,9 @@
 }
 
 .style-7 {
+    color: #000000;
     font-size: 56px;
+
     font-weight: 700;
     font-family: Poppins, sans-serif;
     margin-bottom: 48px;
@@ -358,6 +364,7 @@
 }
 
 .style-28 {
+    color: #000000;
     font-size: 32px;
     font-weight: 700;
     font-family: Poppins, sans-serif;
@@ -385,4 +392,11 @@
     color: rgb(235, 77, 85);
     background-color: rgba(0, 0, 0, 0);
     box-sizing: border-box;
+}
+
+.style-12::placeholder,
+.style-14::placeholder,
+.style-17::placeholder,
+.style-20::placeholder {
+  padding-left: 20px; /* Adjust this value as needed */
 }

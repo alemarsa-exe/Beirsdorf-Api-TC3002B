@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import Homepage from './homepage/homepage'
+import SpamTool from "./SpamTool/SpamTool";
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 
 function App() {
   const [data, setData] = useState(null);
@@ -25,8 +27,15 @@ function App() {
   );
   */
    return (
-      <Homepage />
-   )
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/spam-tool" element={<SpamTool />} />
+        </Routes>
+      </div>
+    </Router>
+  );
 }
 
 export default App;

@@ -47,6 +47,9 @@ def predict():
         'prediction': 'Spam' if prediction == 1 else 'Not Spam',
         'probability': probability[prediction]
     }
+
+    print("Response: ", response)
+
     return jsonify(response)
 
 def preprocess_email(email_data):
@@ -68,7 +71,7 @@ def serve(path):
         return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, host='0.0.0.0')
 
 
 
