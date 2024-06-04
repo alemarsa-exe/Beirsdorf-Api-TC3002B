@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
+import Homepage from './homepage/homepage'
 
 function App() {
   const [data, setData] = useState(null);
@@ -11,7 +12,7 @@ function App() {
   }, []);
 
   // Hola
-
+  /*
   return (
     <div className="App">
       <header className="App-header">
@@ -22,6 +23,10 @@ function App() {
       </header>
     </div>
   );
+  */
+   return (
+      <Homepage />
+   )
 }
 
 export default App;
