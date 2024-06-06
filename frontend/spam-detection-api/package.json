@@ -16,6 +16,7 @@
     "@uppy/remote-sources": "^1.2.0",
     "@uppy/tus": "^3.5.5",
     "@uppy/xhr-upload": "^3.6.7",
+    "axios": "^1.7.2",
     "flowbite": "^1.4.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
