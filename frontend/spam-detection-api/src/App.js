@@ -3,6 +3,9 @@ import './App.css';
 import Homepage from './homepage/homepage'
 import SpamTool from "./SpamTool/SpamTool";
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Navbar from './components/navbar/Navbar';
+import NewHome from './newHome/NewHome';
+import Footer from './components/footer/Footer';
 
 function App() {
   const [data, setData] = useState(null);
@@ -29,10 +32,12 @@ function App() {
    return (
     <Router>
       <div className="App">
+      <Navbar/>
         <Routes>
-          <Route path="/" element={<Homepage />} />
+          <Route path="/" element={<NewHome />} />
           <Route path="/spam-tool" element={<SpamTool />} />
         </Routes>
+        <Footer/>
       </div>
     </Router>
   );
