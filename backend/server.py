@@ -5,14 +5,14 @@ import os
 import nltk
 from nltk.corpus import stopwords
 from json_to_csv import json_to_csv
-from pre_processing import dataLoader, cleanData, Lemmatization, make_sentences
+from pre_processing import dataLoader, cleanData
 from csv_to_json import csv_to_json
 from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 from flask_cors import CORS
 
 
 def rem_stopwords_tokenize(data, name):
-    # Define the initial set of English stopwords
     stop_words = set(stopwords.words('english'))
     stop_words.update(stopwords.words('german'))
     stop_words.update(stopwords.words('russian'))
@@ -20,7 +20,6 @@ def rem_stopwords_tokenize(data, name):
     stop_words.update(stopwords.words('greek'))
     stop_words.update(stopwords.words('italian'))
 
-    # Check if data[name] is a pandas Series (column in a DataFrame)
     if isinstance(data[name], pd.Series):
         x = []
         for i in data[name]:
@@ -29,15 +28,40 @@ def rem_stopwords_tokenize(data, name):
             x.append(" ".join(filtered_sentence))
         data[name] = x
     else:
-        # If data[name] is not a Series, raise an error
         raise ValueError(f"Expected data[{name}] to be a pandas Series, got {type(data[name])} instead")
 
     return data
 
 
-# Download NLTK stopwords if not already downloaded
+def Lemmatization(data, name):
+    lemmatizer = WordNetLemmatizer()
+    if isinstance(data[name], pd.Series):
+        x = []
+        for i in data[name]:
+            word_tokens = word_tokenize(i)
+            lemmatized_sentence = [lemmatizer.lemmatize(w) for w in word_tokens]
+            x.append(" ".join(lemmatized_sentence))
+        data[name] = x
+    else:
+        raise ValueError(f"Expected data[{name}] to be a pandas Series, got {type(data[name])} instead")
+
+    return data
+
+
+def make_sentences(data, name):
+    if isinstance(data[name], pd.Series):
+        x = []
+        for i in data[name]:
+            sentences = nltk.sent_tokenize(i)
+            x.append(" ".join(sentences))
+        data[name] = x
+    else:
+        raise ValueError(f"Expected data[{name}] to be a pandas Series, got {type(data[name])} instead")
+
+    return data
+
+
 nltk.download('stopwords')
-# Download the punkt tokenizer resource
 nltk.download('punkt')
 nltk.download('wordnet')
 
@@ -51,7 +75,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Cargar el modelo y el vectorizador BoW
 with open('./models/RandomForest_bow.pkl', 'rb') as file:
     model = pickle.load(file)
 
@@ -59,64 +82,41 @@ with open('bow_vectorizer.pkl', 'rb') as file:
     vectorizer = pickle.load(file)
 
 
-# Ruta para un solo json
 @app.route('/predict-single', methods=['POST'])
 def predict():
-    # Get data from json
     data = request.get_json()
 
-    # Validate fields in json
     required_fields = ["Attachment Count", "Attachment Extension", "Email From", "Email Subject"]
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing one or more required fields in JSON'}), 400
 
-    # print("Data al llegar: \n", data)
-
-    # Convert data to csv
     json_to_csv(data, 'output.csv')
 
-    # Loading dataframe
     dataframe = dataLoader('output.csv')
 
-    # Dev only
-    # print("Dataframe before cleaning: \n", dataframe)
+    dataframe['combined_text'] = dataframe[['Attachment Count', 'Attachment Extension', 'Email From', 'Email Subject']].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
 
-    # Clean all columns
     cleanData(dataframe, 'combined_text')
     cleanData(dataframe, 'Attachment Count')
     cleanData(dataframe, 'Attachment Extension')
     cleanData(dataframe, 'Email From')
     cleanData(dataframe, 'Email Subject')
-    # print("Dataframe after cleaning: \n", dataframe)
 
-    # Processed data for stop words
     processed_data = rem_stopwords_tokenize(dataframe, 'combined_text')
-    # print("Processed dataframed for stop words: \n", processed_data)
     processed_data = Lemmatization(processed_data, 'combined_text')
-    # print("Lemmatization dataframed for stop words: \n", processed_data)
     processed_data = make_sentences(processed_data, 'combined_text')
-    # print("Make sentences: \n", processed_data)
 
-    # v2 de la nueva funcion
-    # Extracting the relevant fields from the single row
     email_data = processed_data.loc[0, 'combined_text']
-
-    # Transform the text using the vectorizer BoW (Bag of Words)
+    print("Final processed combined_text for prediction:", email_data)  # Debug statement
     email_features = vectorizer.transform([email_data])
 
-    # Make predictions
     prediction = model.predict(email_features)[0]
     probability = model.predict_proba(email_features)[0]
 
-    # Creating the response
     response = {
         'prediction': 'Spam' if prediction == 1 else 'Not Spam',
         'probability': probability[prediction]
     }
-
-    # Printing and returning the response
-    # print("Prediction:", response['prediction'])
-    # print("Probability:", response['probability'])
 
     return jsonify(response)
 
@@ -135,46 +135,47 @@ def predict_csv():
     file.save(filepath)
     dataframe = dataLoader(filepath)
 
-    print("Dataframe:\n", dataframe)
+    if 'combined_text' not in dataframe.columns:
+        dataframe['combined_text'] = dataframe[['Attachment Count', 'Attachment Extension', 'Email From', 'Email Subject']].apply(lambda x: ' '.join(x.dropna().astype(str)), axis=1)
+
+    print("Dataframe before processing:\n", dataframe)
 
     predictions = []
 
     for index, row in dataframe.iterrows():
-        # Ensure row is a DataFrame for the function
         row = pd.DataFrame([row])
 
-        # Clean data
         cleanData(row, 'combined_text')
         cleanData(row, 'Attachment Count')
         cleanData(row, 'Attachment Extension')
         cleanData(row, 'Email From')
         cleanData(row, 'Email Subject')
 
-        # Debug: Print the row after cleaning
-        print("After cleaning:", row)
+        print(f"Combined text after cleaning for row {index}:\n{row['combined_text'].iloc[0]}")
 
-        # Process text data
         processed_data = rem_stopwords_tokenize(row, 'combined_text')
-        processed_data = Lemmatization(processed_data, 'combined_text')
-        processed_data = make_sentences(processed_data, 'combined_text')
+        print(f"Combined text after stopwords removal for row {index}:\n{processed_data['combined_text'].iloc[0]}")
 
-        # Reset index to ensure we can access by loc[0]
+        processed_data = Lemmatization(processed_data, 'combined_text')
+        print(f"Combined text after lemmatization for row {index}:\n{processed_data['combined_text'].iloc[0]}")
+
+        processed_data = make_sentences(processed_data, 'combined_text')
+        print(f"Combined text after making sentences for row {index}:\n{processed_data['combined_text'].iloc[0]}")
+
         processed_data.reset_index(drop=True, inplace=True)
 
-        # Debug: Print the processed data
-        print("Processed data:", processed_data)
-
-        # Extract text from processed data
         email_data = processed_data.loc[0, 'combined_text']
+        print(f"Final processed combined_text for row {index}: {email_data}")
 
-        # Transform the text using the vectorizer BoW (Bag of Words)
-        email_features = vectorizer.transform([email_data])
+        if not email_data.strip():
+            print(f"Warning: Processed combined_text for row {index} is empty.")
+            email_features = vectorizer.transform([""])
+        else:
+            email_features = vectorizer.transform([email_data])
 
-        # Make predictions
         prediction = model.predict(email_features)[0]
         probability = model.predict_proba(email_features)[0]
 
-        # Creating the response for each row
         response = {
             'Attachment Count': int(row['Attachment Count'].values[0]) if row['Attachment Count'].values[0] else "",
             'Attachment Extension': row['Attachment Extension'].values[0],
@@ -184,12 +185,10 @@ def predict_csv():
             'probability': probability[prediction]
         }
 
-        # Append the response to predictions list
         predictions.append(response)
 
-        print("\n\n\nResponse in csv\n", predictions)
+        print("Response for row {}:\n{}".format(index, response))
 
-    # Returning JSON response with all predictions
     return jsonify(predictions)
 
 
@@ -197,11 +196,10 @@ def predict_csv():
 def get_data():
     return jsonify({"message": "Hello from Flask!"})
 
-
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
-    if path != "" and os.path.exists(app.static_folder + '/' + path):
+    if (path != "" and os.path.exists(app.static_folder + '/' + path)):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
