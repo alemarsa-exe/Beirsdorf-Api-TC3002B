@@ -1,15 +1,19 @@
 from flask import Flask, jsonify, send_from_directory, request
 import pickle
-import joblib
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.ensemble import RandomForestClassifier
 import pandas as pd
 import os
 from json_to_csv import json_to_csv
 from pre_processing import dataLoader, cleanData, rem_stopwords_tokenize, Lemmatization, make_sentences
+from csv_to_json import csv_to_json
 
 app = Flask(__name__, static_folder='../frontend/spam-detection-api/build')
 
+UPLOAD_FOLDER = 'uploads'
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 # Cargar el modelo y el vectorizador BoW
@@ -18,6 +22,7 @@ with open('./models/RandomForest_bow.pkl', 'rb') as file:
 
 with open('bow_vectorizer.pkl', 'rb') as file:
     vectorizer = pickle.load(file)
+
 
 # Ruta para un solo json
 @app.route('/predict-single', methods=['POST'])
@@ -30,8 +35,7 @@ def predict():
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing one or more required fields in JSON'}), 400
 
-    # Dev only
-    print("Data al llegar: \n", data)
+    #print("Data al llegar: \n", data)
 
     # Convert data to csv
     json_to_csv(data, 'output.csv')
@@ -52,11 +56,11 @@ def predict():
 
     # Processed data for stop words
     processed_data = rem_stopwords_tokenize(dataframe, 'combined_text')
-    print("Processed dataframed for stop words: \n", processed_data)
+    #print("Processed dataframed for stop words: \n", processed_data)
     processed_data = Lemmatization(processed_data, 'combined_text')
-    print("Lemmatization dataframed for stop words: \n", processed_data)
+    #print("Lemmatization dataframed for stop words: \n", processed_data)
     processed_data = make_sentences(processed_data, 'combined_text')
-    print("Make sentences: \n", processed_data)
+    #print("Make sentences: \n", processed_data)
 
 
     # v2 de la nueva funcion
@@ -77,55 +81,71 @@ def predict():
     }
 
     # Printing and returning the response
-    print("Prediction:", response['prediction'])
-    print("Probability:", response['probability'])
+    #print("Prediction:", response['prediction'])
+    #print("Probability:", response['probability'])
 
     return jsonify(response)
 
+@app.route('/predict-csv', methods=['POST'])
+def predict_csv():
 
-'''
-    # NUEVA FUNCION
-    #------------------------------
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
 
-    # Combine relevant fields into a single text string
-    email_data = processed_data["combined_text"]
+    file = request.files['file']
 
-    # Transform the text using the vectorizer BoW (Bag of Words)
-    email_features = vectorizer.transform(email_data)
+    if file.filename == '' or not file.filename.endswith('.csv'):
+        return jsonify({'error': 'Invalid file format'}), 400
 
-    # Make predictions
-    predictions = model.predict(email_features)
-    probabilities = model.predict_proba(email_features)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(filepath)
+    dataframe = dataLoader(filepath)
 
-    # Create a list to store response for each email
-    responses = []
+    print("Dataframe:\n", dataframe)
 
-    # Iterate over each prediction and probability
-    for prediction, probability in zip(predictions, probabilities):
+    predictions = []
+
+    for index, row in dataframe.iterrows():
+        # Clean data
+        cleanData(row, 'combined_text')
+        cleanData(row, 'Attachment Count')
+        cleanData(row, 'Attachment Extension')
+        cleanData(row, 'Email From')
+        cleanData(row, 'Email Subject')
+
+        # Process text data
+        processed_data = rem_stopwords_tokenize(row, 'combined_text')
+        processed_data = Lemmatization(processed_data, 'combined_text')
+        processed_data = make_sentences(processed_data, 'combined_text')
+
+        # Extract text from processed data
+        email_data = processed_data.loc[0, 'combined_text']
+
+        # Transform the text using the vectorizer BoW (Bag of Words)
+        email_features = vectorizer.transform([email_data])
+
+        # Make predictions
+        prediction = model.predict(email_features)[0]
+        probability = model.predict_proba(email_features)[0]
+
+        # Creating the response for each row
         response = {
+            'original_row': row.to_dict(),
             'prediction': 'Spam' if prediction == 1 else 'Not Spam',
             'probability': probability[prediction]
         }
-        responses.append(response)
 
-    # Print and return the response
-    for i, response in enumerate(responses):
-        print(f"Email {i + 1} - Prediction: {response['prediction']}, Probability: {response['probability']}")
+        # Append the response to predictions list
+        predictions.append(response)
 
-    return jsonify(responses)
+    # Returning JSON response with all predictions
+    return jsonify(predictions)
 
-'''
-
-
-def preprocess_email(email_data):
-    # Realizar los pasos de preprocesamiento del texto del correo electrónico
-    # (limpieza, tokenización, eliminación de stopwords, lematización, etc.)
-    preprocessed_text = ...
-    return email_data
 
 @app.route('/api/data')
 def get_data():
     return jsonify({"message": "Hello from Flask!"})
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -137,14 +157,3 @@ def serve(path):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')
-
-
-
-
-
-
-
-
-
-if __name__ == '__main__':
-    app.run()

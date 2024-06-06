@@ -15,32 +15,42 @@ def dataLoader(csv_file):
     data = data.fillna('')
 
     # Concatenación de los datos en una sola columna
-    data['combined_text'] = data[['Attachment Count', 'Attachment Extension', 'Email From', 'Email Subject']].astype(
-        str).agg(' '.join, axis=1)
+    # Concatenación de los datos en una sola columna
+    data['combined_text'] = data['Attachment Count'].astype(str) + ' ' + data['Attachment Extension'].astype(
+        str) + ' ' + data['Email From'].astype(str) + ' ' + data['Email Subject'].astype(str)
 
     # Only for development
-    # print(data.info())
-    # print(data.head())
+    print("Desde dataLaoder")
+    print(data.info())
+    print(data.head())
 
     return data
 
 
 # Clean data
 def cleanData(data, name):
-    data[name] = data[name].astype(str)
-    data[name] = data[name].str.lower()
-    # Quitar hashtags
-    data[name] = data[name].apply(lambda x: re.sub(r'\B#\S+', '', x))
-    # Quitar enlaces
-    data[name] = data[name].apply(lambda x: re.sub(r"http\S+", "LINK", x))
-    # Quitar caracteres especiales
-    data[name] = data[name].apply(lambda x: ' '.join(re.findall(r'\w+', x)))
-    # Quitar espacios múltiples
-    data[name] = data[name].apply(lambda x: re.sub(r'\s+', ' ', x, flags=re.I))
-    # Quitar letras individuales
-    data[name] = data[name].apply(lambda x: re.sub(r'\s+[a-zA-Z]\s+', '', x))
-    # Quitar identificadores de Twitter
-    data[name] = data[name].apply(lambda x: re.sub('@[^\s]+', '', x))
+    if isinstance(data, pd.DataFrame):
+        for index, row in data.iterrows():
+            row[name] = str(row[name]).lower()
+            # Rest of your cleaning operations
+            data[name] = data[name].astype(str)
+            data[name] = data[name].astype(str)
+            data[name] = data[name].str.lower()
+            # Quitar hashtags
+            data[name] = data[name].apply(lambda x: re.sub(r'\B#\S+', '', x))
+            # Quitar enlaces
+            data[name] = data[name].apply(lambda x: re.sub(r"http\S+", "LINK", x))
+            # Quitar caracteres especiales
+            data[name] = data[name].apply(lambda x: ' '.join(re.findall(r'\w+', x)))
+            # Quitar espacios múltiples
+            data[name] = data[name].apply(lambda x: re.sub(r'\s+', ' ', x, flags=re.I))
+            # Quitar letras individuales
+            data[name] = data[name].apply(lambda x: re.sub(r'\s+[a-zA-Z]\s+', '', x))
+            # Quitar identificadores de Twitter
+            data[name] = data[name].apply(lambda x: re.sub('@[^\s]+', '', x))
+    else:
+        print("Input data is not a DataFrame.")
+
 
 
 # Remove Stop Words
