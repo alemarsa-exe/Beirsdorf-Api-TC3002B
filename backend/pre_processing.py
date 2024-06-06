@@ -10,6 +10,7 @@ from nltk.tokenize import word_tokenize
 def dataLoader(csv_file):
     # Cargar datos
     data = pd.read_csv(csv_file, delimiter=';', quoting=3, skipinitialspace=True)
+    print("Tipo de data: " + str(type(data)))
 
     # Quitar valores nulos
     data = data.fillna('')

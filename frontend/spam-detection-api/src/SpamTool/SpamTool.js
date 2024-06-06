@@ -64,11 +64,13 @@ function SpamTool() {
     const [error, setError] = useState(null);
 
     const handleUploadSuccess = (data) => {
+        console.log("Handle upload success:", data); // Log the data received
         setResponseCsv(data);
         setError(null);
     };
 
     const handleUploadError = (errorMessage) => {
+        console.log("Handle upload error:", errorMessage); // Log the error message
         setError(errorMessage);
         setResponseCsv(null);
     };
@@ -76,57 +78,61 @@ function SpamTool() {
     const renderResponse = () => {
         if (!responseCsv) return null;
 
-        // Assuming the response is an array of objects
-        return (
-            <div>
-                <h3>Results:</h3>
-                <table>
-                    <thead>
-                    <tr>
-                        {Object.keys(responseCsv[0]).map((key) => (
-                            <th key={key}>{key}</th>
-                        ))}
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {responseCsv.map((item, index) => (
-                        <tr key={index}>
-                            {Object.values(item).map((value, i) => (
-                                <td key={i}>{value}</td>
+        console.log("Response CSV:", responseCsv); // Log the responseCsv before rendering
+
+        // Check if responseCsv is an array or an object
+        if (Array.isArray(responseCsv)) {
+            return (
+                <div>
+                    <h3>Results:</h3>
+                    <table>
+                        <thead>
+                        <tr>
+                            {Object.keys(responseCsv[0]).map((key) => (
+                                <th key={key}>{key}</th>
                             ))}
                         </tr>
-                    ))}
-                    </tbody>
-                </table>
-            </div>
-        );
-    };
-
-
-    const TableComponent = ({data}) => {
-        const headers = Object.keys(data[0]);
-
-        return (
-            <table>
-                <thead>
-                <tr>
-                    {headers.map(header => (
-                        <th key={header}>{header}</th>
-                    ))}
-                </tr>
-                </thead>
-                <tbody>
-                {data.map((item, index) => (
-                    <tr key={index}>
-                        {headers.map(header => (
-                            <td key={header}>{item[header]}</td>
+                        </thead>
+                        <tbody>
+                        {responseCsv.map((item, index) => (
+                            <tr key={index}>
+                                {Object.values(item).map((value, i) => (
+                                    <td key={i}>{value.toString()}</td>
+                                ))}
+                            </tr>
                         ))}
-                    </tr>
-                ))}
-                </tbody>
-            </table>
-        );
-    }
+                        </tbody>
+                    </table>
+                </div>
+            );
+        } else if (typeof responseCsv === 'object' && responseCsv !== null) {
+            const keys = Object.keys(responseCsv);
+            const values = Object.values(responseCsv);
+            return (
+                <div>
+                    <h3>Results:</h3>
+                    <table>
+                        <thead>
+                        <tr>
+                            {keys.map((key) => (
+                                <th key={key}>{key}</th>
+                            ))}
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            {values.map((value, index) => (
+                                <td key={index}>{value.toString()}</td>
+                            ))}
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            );
+        } else {
+            return <div>Unexpected response format</div>;
+        }
+    };
 
 
     return (
@@ -245,14 +251,14 @@ function SpamTool() {
                                         <div>
                                             <h2> Upload your file </h2>
                                             <Uploader onUploadSuccess={handleUploadSuccess}
-                                                          onUploadError={handleUploadError}/>
+                                                      onUploadError={handleUploadError}/>
                                             {error && (
                                                 <div style={{color: 'red'}}>
                                                     <h3>Error:</h3>
                                                     <pre>{error}</pre>
                                                 </div>
                                             )}
-                                            {renderResponse()}
+
                                         </div>
                                     )}
 
@@ -282,9 +288,14 @@ function SpamTool() {
                                     {/*<p className="style-30"><a href="#" className="style-31">Read more</a></p>*/}
                                 </div>
                             </div>
-                            <div style={{margin: '10px'}}>
-                                {/* <TableComponent data={SpamData}/> */}
-                            </div>
+                            {activeTab === "csv" ? (
+                                <div style={{margin: '10px'}}>
+                                    {renderResponse()}
+                                </div>
+                            ) : (
+                                <br/>
+                            )}
+
 
                         </div>
                     </div>
@@ -295,151 +306,3 @@ function SpamTool() {
 }
 
 export default SpamTool;
-
-
-const SpamData = [
-    {
-        "Attachment Count": "1",
-        "Attachment Extension": "png",
-        "Email From": "Haldin <sales@haldin-natural.com>",
-        "Email Subject": "Natural Product is Desirable to Household With Children",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "2",
-        "Attachment Extension": "pdf pdf",
-        "Email From": "Dave Douglas <dave.d@businessesinsight.com>",
-        "Email Subject": "Re: Overview Analysis For Skin Lightening Products Market",
-        "prediction": "Spam",
-        "probability": 0.12312312
-    },
-    {
-        "Attachment Count": "1",
-        "Attachment Extension": "xml",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.87399312
-    },
-    {
-        "Attachment Count": "3",
-        "Attachment Extension": "pdf pdf pdf",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.9512354312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "correos@correos.com",
-        "Email Subject": "Información sobre su envío",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "LinkedIn Learning <messages-noreply@linkedin.com>",
-        "Email Subject": "Welcome to LinkedIn Learning, Christoph!",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "Das HubSpot-Team <hubspotgermany@hubspot.com>",
-        "Email Subject": "Bestätigen Sie Ihre Anmeldung",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "(574) 144-856\" <phonevpzod@appsr88.com>",
-        "Email Subject": "Tesa:Vm for Stefan Stefan 01:09 Seconds Friday, December 30, 2022",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "SSC GL 0345 POL /BSS HAM <SSCGL0345POL@Beiersdorf.com>",
-        "Email Subject": "RE: Bank details confirmation",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": 1,
-        "Attachment Extension": "pdf",
-        "Email From": "QIMA Billing <support@qima.com>",
-        "Email Subject": "tesa SE: First Payment Reminder for Invoice(s)",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": "",
-        "Attachment Extension": "",
-        "Email From": "NIVEA Newsletter\" <newsletter@n.nivea.co.th>",
-        "Email Subject": "ลุ้นรับ Watson Voucher 500 บาท 100 รางวัล กับนีเวีย ง่ายๆ แค่ตอบแบบสอบถามกับ NIVEA Thailand",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    },
-    {
-        "Attachment Count": 2,
-        "Attachment Extension": "",
-        "Email From": "Dain Kim <Dain@kudoway.com>",
-        "Email Subject": "Re: KUDO on MS Teams or Zoom",
-        "prediction": "Spam",
-        "probability": 0.6512312312
-    }
-]

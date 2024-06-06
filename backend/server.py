@@ -2,11 +2,47 @@ from flask import Flask, jsonify, send_from_directory, request
 import pickle
 import pandas as pd
 import os
+import nltk
+from nltk.corpus import stopwords
 from json_to_csv import json_to_csv
-from pre_processing import dataLoader, cleanData, rem_stopwords_tokenize, Lemmatization, make_sentences
+from pre_processing import dataLoader, cleanData, Lemmatization, make_sentences
 from csv_to_json import csv_to_json
+from nltk.tokenize import word_tokenize
+from flask_cors import CORS
+
+
+def rem_stopwords_tokenize(data, name):
+    # Define the initial set of English stopwords
+    stop_words = set(stopwords.words('english'))
+    stop_words.update(stopwords.words('german'))
+    stop_words.update(stopwords.words('russian'))
+    stop_words.update(stopwords.words('french'))
+    stop_words.update(stopwords.words('greek'))
+    stop_words.update(stopwords.words('italian'))
+
+    # Check if data[name] is a pandas Series (column in a DataFrame)
+    if isinstance(data[name], pd.Series):
+        x = []
+        for i in data[name]:
+            word_tokens = word_tokenize(i)
+            filtered_sentence = [w for w in word_tokens if not w in stop_words]
+            x.append(" ".join(filtered_sentence))
+        data[name] = x
+    else:
+        # If data[name] is not a Series, raise an error
+        raise ValueError(f"Expected data[{name}] to be a pandas Series, got {type(data[name])} instead")
+
+    return data
+
+
+# Download NLTK stopwords if not already downloaded
+nltk.download('stopwords')
+# Download the punkt tokenizer resource
+nltk.download('punkt')
+nltk.download('wordnet')
 
 app = Flask(__name__, static_folder='../frontend/spam-detection-api/build')
+CORS(app)
 
 UPLOAD_FOLDER = 'uploads'
 
@@ -14,7 +50,6 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 
 # Cargar el modelo y el vectorizador BoW
 with open('./models/RandomForest_bow.pkl', 'rb') as file:
@@ -35,7 +70,7 @@ def predict():
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing one or more required fields in JSON'}), 400
 
-    #print("Data al llegar: \n", data)
+    # print("Data al llegar: \n", data)
 
     # Convert data to csv
     json_to_csv(data, 'output.csv')
@@ -44,7 +79,7 @@ def predict():
     dataframe = dataLoader('output.csv')
 
     # Dev only
-    #print("Dataframe before cleaning: \n", dataframe)
+    # print("Dataframe before cleaning: \n", dataframe)
 
     # Clean all columns
     cleanData(dataframe, 'combined_text')
@@ -52,16 +87,15 @@ def predict():
     cleanData(dataframe, 'Attachment Extension')
     cleanData(dataframe, 'Email From')
     cleanData(dataframe, 'Email Subject')
-    #print("Dataframe after cleaning: \n", dataframe)
+    # print("Dataframe after cleaning: \n", dataframe)
 
     # Processed data for stop words
     processed_data = rem_stopwords_tokenize(dataframe, 'combined_text')
-    #print("Processed dataframed for stop words: \n", processed_data)
+    # print("Processed dataframed for stop words: \n", processed_data)
     processed_data = Lemmatization(processed_data, 'combined_text')
-    #print("Lemmatization dataframed for stop words: \n", processed_data)
+    # print("Lemmatization dataframed for stop words: \n", processed_data)
     processed_data = make_sentences(processed_data, 'combined_text')
-    #print("Make sentences: \n", processed_data)
-
+    # print("Make sentences: \n", processed_data)
 
     # v2 de la nueva funcion
     # Extracting the relevant fields from the single row
@@ -81,14 +115,14 @@ def predict():
     }
 
     # Printing and returning the response
-    #print("Prediction:", response['prediction'])
-    #print("Probability:", response['probability'])
+    # print("Prediction:", response['prediction'])
+    # print("Probability:", response['probability'])
 
     return jsonify(response)
 
+
 @app.route('/predict-csv', methods=['POST'])
 def predict_csv():
-
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -106,6 +140,9 @@ def predict_csv():
     predictions = []
 
     for index, row in dataframe.iterrows():
+        # Ensure row is a DataFrame for the function
+        row = pd.DataFrame([row])
+
         # Clean data
         cleanData(row, 'combined_text')
         cleanData(row, 'Attachment Count')
@@ -113,10 +150,19 @@ def predict_csv():
         cleanData(row, 'Email From')
         cleanData(row, 'Email Subject')
 
+        # Debug: Print the row after cleaning
+        print("After cleaning:", row)
+
         # Process text data
         processed_data = rem_stopwords_tokenize(row, 'combined_text')
         processed_data = Lemmatization(processed_data, 'combined_text')
         processed_data = make_sentences(processed_data, 'combined_text')
+
+        # Reset index to ensure we can access by loc[0]
+        processed_data.reset_index(drop=True, inplace=True)
+
+        # Debug: Print the processed data
+        print("Processed data:", processed_data)
 
         # Extract text from processed data
         email_data = processed_data.loc[0, 'combined_text']
@@ -130,13 +176,18 @@ def predict_csv():
 
         # Creating the response for each row
         response = {
-            'original_row': row.to_dict(),
+            'Attachment Count': int(row['Attachment Count'].values[0]) if row['Attachment Count'].values[0] else "",
+            'Attachment Extension': row['Attachment Extension'].values[0],
+            'Email From': row['Email From'].values[0],
+            'Email Subject': row['Email Subject'].values[0],
             'prediction': 'Spam' if prediction == 1 else 'Not Spam',
             'probability': probability[prediction]
         }
 
         # Append the response to predictions list
         predictions.append(response)
+
+        print("\n\n\nResponse in csv\n", predictions)
 
     # Returning JSON response with all predictions
     return jsonify(predictions)
@@ -154,6 +205,7 @@ def serve(path):
         return send_from_directory(app.static_folder, path)
     else:
         return send_from_directory(app.static_folder, 'index.html')
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')

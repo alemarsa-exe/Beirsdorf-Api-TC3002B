@@ -1,9 +1,9 @@
 // src/FileUploader.js
 
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
-const Uploader = ({onUploadSuccess, onUploadError}) => {
+const Uploader = ({ onUploadSuccess, onUploadError }) => {
     const [file, setFile] = useState(null);
 
     const handleFileChange = (event) => {
@@ -21,23 +21,25 @@ const Uploader = ({onUploadSuccess, onUploadError}) => {
         formData.append('file', file);
 
         try {
+            console.log("Uploading file...");
             const res = await axios.post('http://localhost:5000/predict-csv', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
+            console.log("Upload successful:", res.data);
             onUploadSuccess(res.data);
         } catch (err) {
             const errorMsg = err.response ? err.response.data : 'Error uploading file';
-            onUploadError(errorMsg);
             console.error('Error uploading file:', err);
+            onUploadError(errorMsg);
         }
     };
 
     return (
-        <div style={{margin: "10px 0 10px 0"}}>
+        <div style={{ margin: "10px 0 10px 0" }}>
             <form onSubmit={handleSubmit}>
-                <input type="file" accept=".csv" onChange={handleFileChange} style={{borderRadius: "0.5rem"}}/>
+                <input type="file" accept=".csv" onChange={handleFileChange} style={{ borderRadius: "0.5rem" }} />
                 <button type="submit" style={{
                     margin: "10px 0 0 10px",
                     borderRadius: "0.5rem",
